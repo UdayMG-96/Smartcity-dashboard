@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmartCity — Urban Intelligence Platform</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:        #070d1a;
+      --bg2:       #0d1629;
+      --bg3:       #111e35;
+      --border:    rgba(100,160,255,0.12);
+      --accent:    #3b82f6;
+      --accent2:   #06b6d4;
+      --green:     #22d3a5;
+      --yellow:    #fbbf24;
+      --red:       #f87171;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --card-glow: 0 0 0 1px rgba(59,130,246,0.15), 0 4px 32px rgba(0,0,0,0.4);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Background grid pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7,13,26,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    .logo-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+    .logo-sub { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 1px; }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(34,211,165,0.1);
+      border: 1px solid rgba(34,211,165,0.25);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 12px;
+      color: var(--green);
+      font-family: 'Space Mono', monospace;
+    }
+    .live-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+    #last-update-time { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .main { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 28px 24px 60px; }
+
+    /* Tab Nav */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 28px;
+      width: fit-content;
+    }
+    .tab-btn {
+      padding: 8px 18px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .tab-btn.active { background: var(--bg3); color: var(--text); box-shadow: 0 1px 8px rgba(0,0,0,0.4); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+    /* ── KPI Grid ───────────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--card-glow);
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(59,130,246,0.04) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 40px rgba(59,130,246,0.12); }
+
+    .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 10px; font-weight: 600; }
+    .kpi-value { font-family: 'Space Mono', monospace; font-size: 2.4rem; font-weight: 700; line-height: 1; margin-bottom: 8px; }
+    .kpi-sub { font-size: 12px; color: var(--muted); }
+    .kpi-icon { position: absolute; top: 18px; right: 20px; font-size: 22px; opacity: 0.5; }
+
+    .status-tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .tag-good { background: rgba(34,211,165,0.12); color: var(--green); border: 1px solid rgba(34,211,165,0.3); }
+    .tag-moderate { background: rgba(251,191,36,0.12); color: var(--yellow); border: 1px solid rgba(251,191,36,0.3); }
+    .tag-bad { background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+
+    /* ── Sections / Cards ───────────────────────────────────────── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      box-shadow: var(--card-glow);
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title span { color: var(--text); }
+
+    /* Traffic Junction Items */
+    .junction-list { display: flex; flex-direction: column; gap: 14px; }
+    .junction-item { display: flex; flex-direction: column; gap: 6px; }
+    .junction-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+    .junction-name { font-weight: 600; color: var(--text); }
+    .junction-meta { color: var(--muted); font-size: 11px; font-family: 'Space Mono', monospace; }
+    .bar-track { height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+
+    /* Env Zone Grid */
+    .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .env-item {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .env-location { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .env-aqi { font-family: 'Space Mono', monospace; font-size: 2rem; font-weight: 700; line-height: 1; margin-bottom: 6px; }
+    .env-details { font-size: 11px; color: var(--muted); line-height: 1.7; }
+
+    /* Alerts */
+    .alerts-list { display: flex; flex-direction: column; gap: 10px; max-height: 320px; overflow-y: auto; }
+    .alert-item {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      background: var(--bg3);
+      border-radius: 10px;
+      padding: 12px 14px;
+      border-left: 3px solid;
+      font-size: 13px;
+    }
+    .alert-critical { border-left-color: var(--red); }
+    .alert-high { border-left-color: var(--yellow); }
+    .alert-medium { border-left-color: var(--accent); }
+    .alert-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .alert-msg { flex: 1; line-height: 1.5; }
+    .alert-time { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; }
+
+    /* Chart wrapper */
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* Prediction list */
+    .pred-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 70px 70px;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .pred-row:last-child { border-bottom: none; }
+    .pred-time { font-family: 'Space Mono', monospace; color: var(--accent2); font-size: 12px; }
+    .pred-conf { font-size: 11px; color: var(--muted); text-align: right; }
+
+    /* Energy zones */
+    .energy-zone {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .energy-zone:last-child { border-bottom: none; }
+    .energy-zone-name { color: var(--text); }
+    .energy-kwh { font-family: 'Space Mono', monospace; font-size: 12px; color: var(--accent2); }
+
+    /* Water */
+    .water-stat { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .water-stat:last-child { border-bottom: none; }
+    .water-label { color: var(--muted); }
+    .water-val { font-family: 'Space Mono', monospace; }
+
+    /* Waste */
+    .waste-item { display: flex; flex-direction: column; gap: 5px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .waste-item:last-child { border-bottom: none; }
+    .waste-row { display: flex; justify-content: space-between; font-size: 13px; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Loading skeleton */
+    .skeleton { background: linear-gradient(90deg, var(--bg3) 25%, rgba(255,255,255,0.04) 50%, var(--bg3) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; height: 16px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+    /* Fullwidth card */
+    .card-full { margin-bottom: 20px; }
+
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    .section-title { font-size: 18px; font-weight: 700; }
+    .section-sub { font-size: 12px; color: var(--muted); font-family: 'Space Mono', monospace; }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ─── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🏙️</div>
+    <div>
+      <div class="logo-text">SMARTCITY</div>
+      <div class="logo-sub">Urban Intelligence Platform</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="last-update-time">Connecting...</span>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+  </div>
+</header>
+
+<!-- ─── Main ─── -->
+<main class="main">
+
+  <!-- Tabs -->
+  <nav class="tabs">
+    <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+    <button class="tab-btn" onclick="switchTab('traffic')">Traffic</button>
+    <button class="tab-btn" onclick="switchTab('environment')">Environment</button>
+    <button class="tab-btn" onclick="switchTab('energy')">Energy</button>
+    <button class="tab-btn" onclick="switchTab('utilities')">Utilities</button>
+    <button class="tab-btn" onclick="switchTab('alerts')">Alerts</button>
+  </nav>
+
+  <!-- ══ OVERVIEW TAB ══════════════════════════════════════════════ -->
+  <div id="tab-overview" class="tab-panel active">
+
+    <div class="section-header">
+      <div>
+        <div class="section-title">City Dashboard</div>
+        <div class="section-sub" id="current-datetime">—</div>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon">🚗</div>
+        <div class="kpi-label">Avg Congestion</div>
+        <div class="kpi-value" id="kpi-congestion" style="color:var(--yellow)">—</div>
+        <div id="kpi-traffic-tag"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">🌬️</div>
+        <div class="kpi-label">Air Quality Index</div>
+        <div class="kpi-value" id="kpi-aqi" style="color:var(--green)">—</div>
+        <div id="kpi-aqi-tag"></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">⚡</div>
+        <div class="kpi-label">Energy Usage</div>
+        <div class="kpi-value" id="kpi-energy" style="color:var(--accent2)">—</div>
+        <div class="kpi-sub">MWh · <span id="kpi-renewable">—</span>% renewable</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">🚨</div>
+        <div class="kpi-label">Active Alerts</div>
+        <div class="kpi-value" id="kpi-alerts" style="color:var(--red)">—</div>
+        <div class="kpi-sub">critical incidents</div>
+      </div>
+    </div>
+
+    <!-- Quick traffic + env -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🚦 <span>Junction Status</span></div>
+        <div class="junction-list" id="ov-junctions"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🌍 <span>Air Quality Zones</span></div>
+        <div class="env-grid" id="ov-env"></div>
+      </div>
+    </div>
+
+    <!-- Chart + alerts -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">📈 <span>Traffic Trend (last 12h)</span></div>
+        <div class="chart-wrap"><canvas id="chart-overview-traffic"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔔 <span>Live Alerts</span></div>
+        <div class="alerts-list" id="ov-alerts"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ TRAFFIC TAB ════════════════════════════════════════════════ -->
+  <div id="tab-traffic" class="tab-panel">
+
+    <div class="section-header">
+      <div class="section-title">Traffic Monitoring</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🚦 <span>Live Junction Status</span></div>
+        <div class="junction-list" id="tr-junctions"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🤖 <span>AI Traffic Predictions</span></div>
+        <div id="tr-predictions"></div>
+      </div>
+    </div>
+
+    <div class="card card-full">
+      <div class="card-title">📊 <span>Hourly Vehicle Volume</span></div>
+      <div class="chart-wrap" style="height:260px"><canvas id="chart-traffic-volume"></canvas></div>
+    </div>
+
+    <div class="card card-full">
+      <div class="card-title">📊 <span>Junction Congestion Comparison</span></div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-traffic-bar"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ══ ENVIRONMENT TAB ════════════════════════════════════════════ -->
+  <div id="tab-environment" class="tab-panel">
+
+    <div class="section-header">
+      <div class="section-title">Environmental Monitoring</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🌍 <span>Zone Air Quality</span></div>
+        <div class="env-grid" id="env-zones"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 <span>AQI Across Zones</span></div>
+        <div class="chart-wrap"><canvas id="chart-env-aqi"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card card-full">
+      <div class="card-title">🌡️ <span>Temperature &amp; Humidity Trend</span></div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-env-temp"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ══ ENERGY TAB ═════════════════════════════════════════════════ -->
+  <div id="tab-energy" class="tab-panel">
+
+    <div class="section-header">
+      <div class="section-title">Energy Analytics</div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Consumption</div>
+        <div class="kpi-value" id="en-total" style="color:var(--accent2)">—</div>
+        <div class="kpi-sub">MWh today</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Renewable Ratio</div>
+        <div class="kpi-value" id="en-renewable" style="color:var(--green)">—</div>
+        <div class="kpi-sub">% clean energy</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Peak Demand</div>
+        <div class="kpi-value" style="color:var(--yellow);font-size:1.6rem" id="en-peak">—</div>
+        <div class="kpi-sub">expected window</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">⚡ <span>Consumption by Zone</span></div>
+        <div id="en-zones"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 <span>Renewable vs Conventional</span></div>
+        <div class="chart-wrap"><canvas id="chart-energy-donut"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card card-full">
+      <div class="card-title">📊 <span>Consumption Forecast (24h)</span></div>
+      <div class="chart-wrap" style="height:240px"><canvas id="chart-energy-line"></canvas></div>
+    </div>
+
+  </div>
+
+  <!-- ══ UTILITIES TAB ══════════════════════════════════════════════ -->
+  <div id="tab-utilities" class="tab-panel">
+
+    <div class="section-header">
+      <div class="section-title">Water &amp; Waste Management</div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">💧 <span>Water Supply Status</span></div>
+        <div id="water-stats"></div>
+        <div class="chart-wrap" style="height:160px; margin-top:16px"><canvas id="chart-water"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🗑️ <span>Waste Collection Bins</span></div>
+        <div id="waste-bins"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ ALERTS TAB ═════════════════════════════════════════════════ -->
+  <div id="tab-alerts" class="tab-panel">
+
+    <div class="section-header">
+      <div class="section-title">Alert Center</div>
+    </div>
+
+    <div class="grid-3">
+      <div class="kpi-card">
+        <div class="kpi-label">Critical</div>
+        <div class="kpi-value" id="al-critical" style="color:var(--red)">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">High Priority</div>
+        <div class="kpi-value" id="al-high" style="color:var(--yellow)">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Medium</div>
+        <div class="kpi-value" id="al-medium" style="color:var(--accent)">—</div>
+      </div>
+    </div>
+
+    <div class="card card-full">
+      <div class="card-title">🔔 <span>All Active Alerts</span></div>
+      <div class="alerts-list" style="max-height:500px" id="all-alerts"></div>
+    </div>
+
+  </div>
+
+</main>
+
+<script>
+  const API = 'http://localhost:5000';
+
+  // ── Chart instances ──────────────────────────────────────────────────────
+  const charts = {};
+
+  function makeChart(id, config) {
+    const canvas = document.getElementById(id);
+    if (!canvas) return null;
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(canvas.getContext('2d'), config);
+    return charts[id];
+  }
+
+  const gridColor = 'rgba(100,160,255,0.06)';
+  const tickColor = '#64748b';
+  const baseAxes = {
+    x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Space Mono', size: 10 } } },
+    y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { family: 'Space Mono', size: 10 } } },
+  };
+  const noLegend = { plugins: { legend: { display: false } } };
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+  function congestionColor(v) {
+    return v > 0.7 ? 'var(--red)' : v > 0.45 ? 'var(--yellow)' : 'var(--green)';
+  }
+  function aqiColor(v) {
+    return v > 150 ? 'var(--red)' : v > 100 ? 'var(--yellow)' : 'var(--green)';
+  }
+  function tag(status) {
+    const s = status.toLowerCase();
+    if (s.includes('critical') || s.includes('hazardous') || s.includes('bad')) return 'bad';
+    if (s.includes('moderate') || s.includes('unhealthy')) return 'moderate';
+    return 'good';
+  }
+
+  function renderJunctions(data, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = data.map(j => `
+      <div class="junction-item">
+        <div class="junction-row">
+          <span class="junction-name">${j.junction_name}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:12px;color:${congestionColor(j.congestion_level)}">${(j.congestion_level*100).toFixed(0)}%</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${j.congestion_level*100}%;background:${congestionColor(j.congestion_level)}"></div>
+        </div>
+        <div class="junction-meta">🚗 ${j.vehicle_count} vehicles &nbsp;|&nbsp; 💨 ${j.avg_speed} km/h</div>
+      </div>
+    `).join('');
+  }
+
+  function renderEnvZones(data, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = data.map(e => `
+      <div class="env-item">
+        <div class="env-location">${e.location}</div>
+        <div class="env-aqi" style="color:${aqiColor(e.aqi)}">${e.aqi}</div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">AQI</div>
+        <div class="env-details">🌡️ ${e.temperature}°C &nbsp; 💧 ${e.humidity}%<br>PM2.5: ${e.pm25} &nbsp; NO₂: ${e.no2}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderAlerts(data, containerId) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    if (!data.length) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px 0">No active alerts.</div>'; return; }
+    const icons = { traffic:'🚦', environment:'🌿', energy:'⚡', maintenance:'🔧' };
+    el.innerHTML = data.map(a => `
+      <div class="alert-item alert-${a.severity}">
+        <div class="alert-icon">${icons[a.type] || '🔔'}</div>
+        <div class="alert-msg">
+          ${a.message}
+          <div class="alert-time">${new Date(a.timestamp).toLocaleTimeString()} · ${a.severity.toUpperCase()}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Fetch helpers ────────────────────────────────────────────────────────
+  async function apiFetch(endpoint) {
+    const res = await fetch(API + endpoint);
+    return res.json();
+  }
+
+  // ── OVERVIEW ─────────────────────────────────────────────────────────────
+  async function loadOverview() {
+    const [summary, traffic, env, alerts, hourly] = await Promise.all([
+      apiFetch('/api/dashboard/summary'),
+      apiFetch('/api/traffic/current'),
+      apiFetch('/api/environment/current'),
+      apiFetch('/api/alerts'),
+      apiFetch('/api/traffic/hourly'),
+    ]);
+
+    document.getElementById('kpi-congestion').textContent = (summary.traffic.avg_congestion * 100).toFixed(0) + '%';
+    document.getElementById('kpi-traffic-tag').innerHTML = `<span class="status-tag tag-${tag(summary.traffic.status)}">${summary.traffic.status}</span>`;
+    document.getElementById('kpi-aqi').textContent = summary.environment.avg_aqi;
+    document.getElementById('kpi-aqi-tag').innerHTML = `<span class="status-tag tag-${tag(summary.environment.status)}">${summary.environment.status}</span>`;
+    document.getElementById('kpi-energy').textContent = summary.energy.total_consumption_mwh;
+    document.getElementById('kpi-renewable').textContent = (summary.energy.renewable_ratio * 100).toFixed(0);
+    document.getElementById('kpi-alerts').textContent = summary.alerts.active_critical;
+
+    renderJunctions(traffic, 'ov-junctions');
+    renderEnvZones(env, 'ov-env');
+    renderAlerts(alerts, 'ov-alerts');
+
+    // Real hourly congestion from dataset
+    makeChart('chart-overview-traffic', {
+      type: 'line',
+      data: {
+        labels: hourly.map(h => h.hour),
+        datasets: [{
+          label: 'Congestion %',
+          data: hourly.map(h => h.congestion),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,0.07)',
+          fill: true, tension: 0.4, pointRadius: 3, pointBackgroundColor: '#3b82f6',
+        }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: baseAxes, ...noLegend },
+    });
+
+    document.getElementById('last-update-time').textContent = new Date().toLocaleTimeString();
+    document.getElementById('current-datetime').textContent = new Date().toLocaleDateString('en-IN', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  }
+
+  // ── TRAFFIC ──────────────────────────────────────────────────────────────
+  async function loadTraffic() {
+    const [traffic, preds, hourly] = await Promise.all([
+      apiFetch('/api/traffic/current'),
+      apiFetch('/api/predictions/traffic'),
+      apiFetch('/api/traffic/hourly'),
+    ]);
+
+    renderJunctions(traffic, 'tr-junctions');
+
+    const predEl = document.getElementById('tr-predictions');
+    predEl.innerHTML = `
+      <div class="pred-row" style="color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em">
+        <span>Time</span><span>Congestion</span><span>Vehicles</span><span>Confidence</span>
+      </div>
+      ${preds.map(p => `
+        <div class="pred-row">
+          <span class="pred-time">${p.time}</span>
+          <div>
+            <div class="bar-track" style="margin:4px 0">
+              <div class="bar-fill" style="width:${p.congestion*100}%;background:${congestionColor(p.congestion)}"></div>
+            </div>
+            <span style="font-size:11px;color:${congestionColor(p.congestion)}">${(p.congestion*100).toFixed(0)}%</span>
+          </div>
+          <span style="font-size:12px;font-family:'Space Mono'">${p.expected_volume}</span>
+          <span class="pred-conf">${(p.confidence*100).toFixed(0)}%</span>
+        </div>
+      `).join('')}
+    `;
+
+    // Real hourly vehicle-count trend from dataset (scaled)
+    makeChart('chart-traffic-volume', {
+      type: 'line',
+      data: {
+        labels: hourly.map(h => h.hour),
+        datasets: [{
+          label: 'Avg Congestion %',
+          data: hourly.map(h => h.congestion),
+          borderColor: '#06b6d4',
+          backgroundColor: 'rgba(6,182,212,0.07)',
+          fill: true, tension: 0.4, pointRadius: 3,
+        }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: baseAxes, ...noLegend },
+    });
+
+    makeChart('chart-traffic-bar', {
+      type: 'bar',
+      data: {
+        labels: traffic.map(t => t.junction_name),
+        datasets: [{
+          label: 'Congestion %',
+          data: traffic.map(t => (t.congestion_level * 100).toFixed(1)),
+          backgroundColor: traffic.map(t => congestionColor(t.congestion_level)),
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: { ...baseAxes, y: { ...baseAxes.y, max: 100 } },
+        ...noLegend,
+      },
+    });
+  }
+
+  // ── ENVIRONMENT ──────────────────────────────────────────────────────────
+  async function loadEnvironment() {
+    const [env, trend] = await Promise.all([
+      apiFetch('/api/environment/current'),
+      apiFetch('/api/environment/trend'),
+    ]);
+    renderEnvZones(env, 'env-zones');
+
+    makeChart('chart-env-aqi', {
+      type: 'bar',
+      data: {
+        labels: env.map(e => e.location),
+        datasets: [{
+          data: env.map(e => e.aqi),
+          backgroundColor: env.map(e => aqiColor(e.aqi)),
+          borderRadius: 6,
+        }],
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: baseAxes, ...noLegend },
+    });
+
+    // Real temperature + humidity trend from cleaned_AirQuality.csv
+    makeChart('chart-env-temp', {
+      type: 'line',
+      data: {
+        labels: trend.map(t => t.time),
+        datasets: [
+          { label: 'Temperature °C', data: trend.map(t => t.temperature), borderColor: '#f87171', backgroundColor: 'rgba(248,113,113,0.06)', fill: true, tension: 0.4, yAxisID: 'y' },
+          { label: 'Humidity %',     data: trend.map(t => t.humidity),    borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.06)',   fill: true, tension: 0.4, yAxisID: 'y1' },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        scales: {
+          x: baseAxes.x,
+          y:  { ...baseAxes.y, position: 'left' },
+          y1: { ...baseAxes.y, position: 'right', grid: { drawOnChartArea: false } },
+        },
+        plugins: { legend: { labels: { color: tickColor, font: { family: 'DM Sans', size: 11 } } } },
+      },
+    });
+  }
+
+  // ── ENERGY ───────────────────────────────────────────────────────────────
+  async function loadEnergy() {
+    const [energy, trend] = await Promise.all([
+      apiFetch('/api/energy/current'),
+      apiFetch('/api/energy/trend'),
+    ]);
+
+    document.getElementById('en-total').textContent = energy.total_consumption_mwh;
+    document.getElementById('en-renewable').textContent = (energy.renewable_ratio * 100).toFixed(0) + '%';
+    document.getElementById('en-peak').textContent = energy.peak_demand_time;
+
+    const zonesEl = document.getElementById('en-zones');
+    zonesEl.innerHTML = energy.zones.map(z => `
+      <div class="energy-zone">
+        <span class="energy-zone-name">${z.name}</span>
+        <div style="text-align:right">
+          <div class="energy-kwh">${z.consumption} MWh</div>
+          <div style="font-size:11px;color:var(--muted)">${z.status}</div>
+        </div>
+      </div>
+    `).join('');
+
+    const renew = energy.renewable_ratio * 100;
+    makeChart('chart-energy-donut', {
+      type: 'doughnut',
+      data: {
+        labels: ['Renewable', 'Conventional'],
+        datasets: [{ data: [renew, 100 - renew], backgroundColor: ['#22d3a5', '#374151'], borderWidth: 0, hoverOffset: 4 }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, cutout: '70%',
+        plugins: { legend: { labels: { color: tickColor, font: { size: 12 } } } },
+      },
+    });
+
+    // Real power readings from energy_preprocessed.csv
+    makeChart('chart-energy-line', {
+      type: 'line',
+      data: {
+        labels: trend.map(t => t.time),
+        datasets: [
+          { label: 'Global Active Power (kW)', data: trend.map(t => t.power),  borderColor: '#06b6d4', backgroundColor: 'rgba(6,182,212,0.07)', fill: true, tension: 0.4, pointRadius: 2 },
+          { label: 'Sub-meter 1 (Wh)',          data: trend.map(t => t.s1),    borderColor: '#fbbf24', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0 },
+          { label: 'Sub-meter 2 (Wh)',          data: trend.map(t => t.s2),    borderColor: '#a78bfa', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0 },
+          { label: 'Sub-meter 3 (Wh)',          data: trend.map(t => t.s3),    borderColor: '#34d399', backgroundColor: 'transparent', tension: 0.4, pointRadius: 0 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, scales: baseAxes,
+        plugins: { legend: { labels: { color: tickColor, font: { size: 11 } } } },
+      },
+    });
+  }
+
+  // ── UTILITIES ────────────────────────────────────────────────────────────
+  async function loadUtilities() {
+    const [water, waste] = await Promise.all([
+      apiFetch('/api/water/current'),
+      apiFetch('/api/waste/current'),
+    ]);
+
+    const waterEl = document.getElementById('water-stats');
+    waterEl.innerHTML = `
+      <div class="water-stat"><span class="water-label">Daily Consumption</span><span class="water-val">${water.daily_consumption_mld} MLD</span></div>
+      <div class="water-stat"><span class="water-label">Reservoir Level</span><span class="water-val" style="color:${water.reservoir_level_pct > 60 ? 'var(--green)' : 'var(--yellow)'}">${water.reservoir_level_pct}%</span></div>
+      <div class="water-stat"><span class="water-label">Quality Index</span><span class="water-val" style="color:var(--green)">${water.quality_index}</span></div>
+      <div class="water-stat"><span class="water-label">Leakage Detected</span><span class="water-val" style="color:${water.leakage_detected ? 'var(--red)' : 'var(--green)'}">${water.leakage_detected ? 'YES ⚠️' : 'None'}</span></div>
+    `;
+
+    makeChart('chart-water', {
+      type: 'bar',
+      data: {
+        labels: water.zones.map(z => z.name),
+        datasets: [
+          { label: 'Usage (MLD)', data: water.zones.map(z => z.usage), backgroundColor: '#3b82f6', borderRadius: 4 },
+          { label: 'Pressure (bar)', data: water.zones.map(z => z.pressure_bar), backgroundColor: '#22d3a5', borderRadius: 4 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, scales: baseAxes,
+        plugins: { legend: { labels: { color: tickColor, font: { size: 11 } } } },
+      },
+    });
+
+    const wasteEl = document.getElementById('waste-bins');
+    wasteEl.innerHTML = waste.map(b => `
+      <div class="waste-item">
+        <div class="waste-row">
+          <span style="font-weight:600">${b.zone}</span>
+          <span class="status-tag tag-${b.fill_level > 80 ? 'bad' : b.fill_level > 50 ? 'moderate' : 'good'}">${b.status}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${b.fill_level}%;background:${b.fill_level>80?'var(--red)':b.fill_level>50?'var(--yellow)':'var(--green)'}"></div>
+        </div>
+        <div style="font-size:11px;color:var(--muted)">${b.fill_level}% full · Last pickup: ${b.last_pickup}</div>
+      </div>
+    `).join('');
+  }
+
+  // ── ALERTS ───────────────────────────────────────────────────────────────
+  async function loadAlerts() {
+    const alerts = await apiFetch('/api/alerts');
+
+    const counts = { critical: 0, high: 0, medium: 0 };
+    alerts.forEach(a => counts[a.severity] = (counts[a.severity] || 0) + 1);
+    document.getElementById('al-critical').textContent = counts.critical;
+    document.getElementById('al-high').textContent = counts.high;
+    document.getElementById('al-medium').textContent = counts.medium || 0;
+
+    renderAlerts(alerts, 'all-alerts');
+  }
+
+  // ── Tab switching ────────────────────────────────────────────────────────
+  const tabLoaders = {
+    overview: loadOverview,
+    traffic: loadTraffic,
+    environment: loadEnvironment,
+    energy: loadEnergy,
+    utilities: loadUtilities,
+    alerts: loadAlerts,
+  };
+  let activeTab = 'overview';
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    document.querySelectorAll('.tab-btn')[Object.keys(tabLoaders).indexOf(name)].classList.add('active');
+    activeTab = name;
+    tabLoaders[name]();
+  }
+
+  // ── Auto-refresh ─────────────────────────────────────────────────────────
+  function refresh() {
+    tabLoaders[activeTab]();
+  }
+
+  // Initial load
+  loadOverview();
+  setInterval(refresh, 6000);
+</script>
+</body>
+</html>
